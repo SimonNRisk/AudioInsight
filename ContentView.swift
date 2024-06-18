@@ -3,8 +3,38 @@ import UniformTypeIdentifiers
 
 struct ContentView: View {
     @State private var isListening = false
-    @State private var showPullUpView = true
-    @State private var offset: CGFloat = UIScreen.main.bounds.height - 100 // Adjusted initial position
+
+    var body: some View {
+        TabView {
+            MainView(isListening: $isListening)
+                .tabItem {
+                    Image(systemName: "ear")
+                    Text("Main")
+                }
+            
+            Text("Upload stuff")
+                .tabItem {
+                    Image(systemName: "square.and.arrow.up")
+                    Text("Page 2")
+                }
+            
+            Page3View()
+                .tabItem {
+                    Image(systemName: "music.note")
+                    Text("Page 3")
+                }
+            
+            Text("Settings and stuff")
+                .tabItem {
+                    Image(systemName: "person")
+                    Text("Page 4")
+                }
+        }
+    }
+}
+
+struct MainView: View {
+    @Binding var isListening: Bool
 
     var body: some View {
         ZStack {
@@ -14,14 +44,10 @@ struct ContentView: View {
 
                 Spacer()
 
-                MainStatusView(isListening: $isListening, showPullUpView: $showPullUpView, imageName: isListening ? "ear.badge.waveform" : "ear.trianglebadge.exclamationmark")
+                MainStatusView(isListening: $isListening, imageName: isListening ? "ear.badge.waveform" : "ear.trianglebadge.exclamationmark")
                     .padding(.bottom, 40)
 
                 Spacer()
-            }
-
-            if showPullUpView && !isListening {
-                PullUpView(isListening: $isListening, offset: $offset)
             }
 
             if isListening {
@@ -36,65 +62,6 @@ struct ContentView: View {
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         ContentView()
-    }
-}
-
-struct PullUpView: View {
-    @Binding var isListening: Bool
-    @Binding var offset: CGFloat
-
-    var body: some View {
-        VStack {
-            Capsule()
-                .frame(width: 40, height: 6)
-                .padding(.top, 8)
-
-            Text("Explore Previous Auras")
-                .font(.system(size: 20, weight: .bold))
-                .padding(.top, 8)
-
-            Spacer()
-
-            Button(action: {
-                isListening.toggle()
-            }) {
-                Text(isListening ? "Stop Listening" : "Start Listening")
-                    .font(.system(size: 20, weight: .bold))
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .background(Color.black)
-                    .foregroundColor(.white)
-                    .cornerRadius(10)
-                    .padding()
-            }
-
-            Spacer()
-        }
-        .frame(maxWidth: .infinity)
-        .background(Color.white)
-        .cornerRadius(20)
-        .offset(y: offset)
-        .gesture(
-            DragGesture()
-                .onChanged { value in
-                    withAnimation {
-                        if value.translation.height > 0 {
-                            self.offset = value.translation.height + (UIScreen.main.bounds.height - 100)
-                        } else {
-                            self.offset = value.translation.height + UIScreen.main.bounds.height - 100
-                        }
-                    }
-                }
-                .onEnded { value in
-                    withAnimation {
-                        if self.offset > UIScreen.main.bounds.height / 1.5 {
-                            self.offset = UIScreen.main.bounds.height - 100
-                        } else {
-                            self.offset = UIScreen.main.bounds.height / 2
-                        }
-                    }
-                }
-        )
     }
 }
 
@@ -141,7 +108,6 @@ struct ProductTextView: View {
 struct MainStatusView: View {
     @Binding var isListening: Bool
     @State private var showDocumentPicker = false
-    @Binding var showPullUpView: Bool
 
     var imageName: String
 
@@ -150,7 +116,6 @@ struct MainStatusView: View {
             if !isListening {
                 Button(action: {
                     showDocumentPicker = true
-                    showPullUpView = false
                 }) {
                     Text("Upload File")
                         .font(.system(size: 20, weight: .bold))
@@ -164,9 +129,7 @@ struct MainStatusView: View {
                         )
                 }
                 .padding(.bottom, 20) // Add some padding below the button
-                .sheet(isPresented: $showDocumentPicker, onDismiss: {
-                    showPullUpView = true
-                }) {
+                .sheet(isPresented: $showDocumentPicker) {
                     DocumentPickerView(isPresented: $showDocumentPicker)
                 }
             }
@@ -266,7 +229,6 @@ struct MusicNoteView: View {
             }
     }
 
-
     private func startAnimation(index: Int) {
         withAnimation(Animation.easeOut(duration: 1).delay(Double(index) * 0.1)) {
             self.animate = true
@@ -277,4 +239,73 @@ struct MusicNoteView: View {
             self.startAnimation(index: index)
         }
     }
+}
+
+struct Page3View: View {
+    @State private var selectedCategory: Category = .genre
+    @State private var genres = ["Rock", "Jazz", "Pop", "Metal", "HipHop", "Classical"]
+    @State private var auras = ["Aura1", "Aura2", "Aura3", "Aura4", "Aura5", "Aura6"]
+    
+    var body: some View {
+        VStack {
+            HStack {
+                Button(action: {
+                    selectedCategory = .genre
+                }) {
+                    Text("Genre")
+                        .padding()
+                        .background(selectedCategory == .genre ? Color.pink : Color.gray)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                }
+                
+                Button(action: {
+                    selectedCategory = .aura
+                }) {
+                    Text("Aura")
+                        .padding()
+                        .background(selectedCategory == .aura ? Color.pink : Color.gray)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                }
+            }
+            .padding()
+            
+            ScrollView {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 100))]) {
+                    if selectedCategory == .genre {
+                        ForEach(genres, id: \.self) { genre in
+                            CategoryItemView(name: genre)
+                        }
+                    } else {
+                        ForEach(auras, id: \.self) { aura in
+                            CategoryItemView(name: aura)
+                        }
+                    }
+                }
+            }
+        }
+        .background(LinearGradient(gradient: Gradient(colors: [.black, .gray]), startPoint: .topLeading, endPoint: .bottomTrailing).ignoresSafeArea())
+    }
+}
+
+struct CategoryItemView: View {
+    var name: String
+    
+    var body: some View {
+        VStack {
+            Rectangle()
+                .fill(Color.blue)
+                .frame(height: 100)
+                .cornerRadius(10)
+            
+            Text(name)
+                .foregroundColor(.white)
+        }
+        .padding()
+    }
+}
+
+enum Category {
+    case genre, aura
 }
