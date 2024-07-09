@@ -1,34 +1,14 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import PythonKit
 
 struct ContentView: View {
     @State private var isListening = false
 
     var body: some View {
-        TabView {
-            MainView(isListening: $isListening)
-                .tabItem {
-                    Image(systemName: "ear")
-                    Text("Main")
-                }
-            
-            Text("Upload stuff")
-                .tabItem {
-                    Image(systemName: "square.and.arrow.up")
-                    Text("Page 2")
-                }
-            
-            Page3View()
-                .tabItem {
-                    Image(systemName: "music.note")
-                    Text("Page 3")
-                }
-            
-            Text("Settings and stuff")
-                .tabItem {
-                    Image(systemName: "person")
-                    Text("Page 4")
-                }
+        VStack {
+            NavBar(isListening: $isListening)  // Pass isListening to NavBar
+
         }
     }
 }
@@ -37,22 +17,24 @@ struct MainView: View {
     @Binding var isListening: Bool
 
     var body: some View {
-        ZStack {
-            BackgroundView(isListening: $isListening)
-            VStack {
-                ProductTextView(productName: "AudioInsight")
+        VStack {
+            ZStack {
+                BackgroundView(isListening: $isListening)
+                VStack {
+                    ProductTextView(productName: "AudioInsight")
 
-                Spacer()
+                    Spacer()
 
-                MainStatusView(isListening: $isListening, imageName: isListening ? "ear.badge.waveform" : "ear.trianglebadge.exclamationmark")
-                    .padding(.bottom, 40)
+                    MainStatusView(isListening: $isListening, imageName: isListening ? "ear.badge.waveform" : "ear.trianglebadge.exclamationmark")
+                        .padding(.bottom, 40)
 
-                Spacer()
-            }
+                    Spacer()
+                }
 
-            if isListening {
-                ForEach(0..<10) { index in
-                    MusicNoteView(index: index)
+                if isListening {
+                    ForEach(0..<10) { index in
+                        MusicNoteView(index: index)
+                    }
                 }
             }
         }
@@ -107,30 +89,14 @@ struct ProductTextView: View {
 
 struct MainStatusView: View {
     @Binding var isListening: Bool
-    @State private var showDocumentPicker = false
+    var imageName: String // Add imageName as a parameter
 
-    var imageName: String
+    @State private var showDocumentPicker = false
 
     var body: some View {
         VStack(spacing: 8) {
             if !isListening {
-                Button(action: {
-                    showDocumentPicker = true
-                }) {
-                    Text("Upload File")
-                        .font(.system(size: 20, weight: .bold))
-                        .padding()
-                        .background(Color.white)
-                        .foregroundColor(.black)
-                        .cornerRadius(10)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10)
-                                .stroke(Color.white, lineWidth: 1)
-                        )
-                }
-                .padding(.bottom, 20) // Add some padding below the button
-                .sheet(isPresented: $showDocumentPicker) {
-                    DocumentPickerView(isPresented: $showDocumentPicker)
+
                 }
             }
 
@@ -142,8 +108,13 @@ struct MainStatusView: View {
                 withAnimation {
                     isListening.toggle()
                 }
+                if isListening {
+                    startRecording()
+                } else {
+                    stopRecording()
+                } 
             }) {
-                Image(systemName: imageName)
+                Image(systemName: imageName) // Use imageName here
                     .renderingMode(.template)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
@@ -155,7 +126,28 @@ struct MainStatusView: View {
             }
         }
     }
-}
+
+    func startRecording() {
+        let sys = Python.import("sys")
+        sys.path.append("/Users/simonrisk/Documents/AudioInsight1/AudioInsight1")
+        let soundCapture = Python.import("soundCapture")
+
+        DispatchQueue.global(qos: .background).async {
+            soundCapture.start_recording()
+        }
+    }
+
+    func stopRecording() {
+        let sys = Python.import("sys")
+        sys.path.append("/Users/simonrisk/Documents/AudioInsight1/AudioInsight1")
+        let soundCapture = Python.import("soundCapture")
+
+        DispatchQueue.global(qos: .background).async {
+            soundCapture.stop_recording("/Users/simonrisk/Documents/AudioInsight1/AudioInsight1/files")
+        }
+    }
+
+
 
 struct ListenButton: View {
     var title: String
@@ -245,7 +237,9 @@ struct Page3View: View {
     @State private var selectedCategory: Category = .genre
     @State private var genres = ["Rock", "Jazz", "Pop", "Metal", "HipHop", "Classical"]
     @State private var auras = ["Aura1", "Aura2", "Aura3", "Aura4", "Aura5", "Aura6"]
-    
+    @State private var selectedItem: CategoryItem? = nil
+    @State private var showDescription = false
+
     var body: some View {
         VStack {
             HStack {
@@ -258,7 +252,7 @@ struct Page3View: View {
                         .foregroundColor(.white)
                         .cornerRadius(10)
                 }
-                
+
                 Button(action: {
                     selectedCategory = .aura
                 }) {
@@ -270,40 +264,73 @@ struct Page3View: View {
                 }
             }
             .padding()
-            
+
             ScrollView {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 100))]) {
                     if selectedCategory == .genre {
                         ForEach(genres, id: \.self) { genre in
-                            CategoryItemView(name: genre)
+                            CategoryItemView(name: genre, selectedItem: $selectedItem, showDescription: $showDescription)
                         }
                     } else {
                         ForEach(auras, id: \.self) { aura in
-                            CategoryItemView(name: aura)
+                            CategoryItemView(name: aura, selectedItem: $selectedItem, showDescription: $showDescription)
                         }
                     }
                 }
             }
         }
         .background(LinearGradient(gradient: Gradient(colors: [.black, .gray]), startPoint: .topLeading, endPoint: .bottomTrailing).ignoresSafeArea())
+        .sheet(item: $selectedItem) { item in
+            CategoryDescriptionView(name: item.name)
+        }
     }
 }
 
 struct CategoryItemView: View {
     var name: String
-    
+    @Binding var selectedItem: CategoryItem?
+    @Binding var showDescription: Bool
+
     var body: some View {
         VStack {
             Rectangle()
                 .fill(Color.blue)
                 .frame(height: 100)
                 .cornerRadius(10)
-            
+                .onTapGesture {
+                    selectedItem = CategoryItem(id: name, name: name)
+                    showDescription = true
+                }
+
             Text(name)
                 .foregroundColor(.white)
         }
         .padding()
     }
+}
+
+struct CategoryDescriptionView: View {
+    var name: String
+
+    var body: some View {
+        VStack {
+            Text(name)
+                .font(.largeTitle)
+                .padding()
+
+            Text("This is a brief description of \(name).")
+
+                .padding()
+
+            Spacer()
+        }
+        .background(Color.white)
+    }
+}
+
+struct CategoryItem: Identifiable {
+    var id: String
+    var name: String
 }
 
 enum Category {

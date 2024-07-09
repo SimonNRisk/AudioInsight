@@ -7,6 +7,8 @@
 
 import SwiftUI
 import SwiftData
+import PythonKit
+import UniformTypeIdentifiers
 
 @main
 struct AudioInsight1App: App {
