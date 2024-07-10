@@ -109,9 +109,9 @@ struct MainStatusView: View {
                     isListening.toggle()
                 }
                 if isListening {
-                    startRecording()
+                    //startRecording()
                 } else {
-                    stopRecording()
+                    //stopRecording()
                 } 
             }) {
                 Image(systemName: imageName) // Use imageName here
