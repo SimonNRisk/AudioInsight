@@ -1,6 +1,35 @@
 import SwiftUI
 import UniformTypeIdentifiers
 import PythonKit
+import Combine
+
+func sendActionToBackend(isListening: Bool) {
+    guard let url = URL(string: "http://127.0.0.1:5000/api/action") else { return }
+    var request = URLRequest(url: url)
+    request.httpMethod = "POST"
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+    let body: [String: Any] = ["isListening": isListening]
+    request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+
+    URLSession.shared.dataTask(with: request) { data, response, error in
+        if let error = error {
+            print("Error: \(error)")
+            return
+        }
+        if let response = response as? HTTPURLResponse {
+            print("Status code: \(response.statusCode)")
+        }
+    }.resume()
+}
+
+
+
+/*
+ assume the Flask server is running locally on http://localhost:5000 and has an endpoint /api/action to handle the button press.
+ */
+
+
 
 struct ContentView: View {
     @State private var isListening = false
@@ -104,26 +133,28 @@ struct MainStatusView: View {
                 .font(.system(size: 20, weight: .light))
                 .foregroundColor(.white)
 
-            Button(action: {
-                withAnimation {
-                    isListening.toggle()
-                }
-                if isListening {
-                    //startRecording()
-                } else {
-                    //stopRecording()
-                } 
-            }) {
-                Image(systemName: imageName) // Use imageName here
-                    .renderingMode(.template)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 180, height: 180)
-                    .font(.system(size: 70, weight: .light))
-                    .foregroundColor(.white)
-                    .offset(x: imageName == "ear.trianglebadge.exclamationmark" ? 10 : 0)
-                    .transition(.opacity)
+        Button(action: {
+            withAnimation {
+                isListening.toggle()
             }
+            sendActionToBackend(isListening: isListening)
+            if isListening {
+                //startRecording()
+            } else {
+                //stopRecording()
+            }
+        }) {
+            Image(systemName: imageName) // Use imageName here
+                .renderingMode(.template)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 180, height: 180)
+                .font(.system(size: 70, weight: .light))
+                .foregroundColor(.white)
+                .offset(x: imageName == "ear.trianglebadge.exclamationmark" ? 10 : 0)
+                .transition(.opacity)
+        }
+
         }
     }
 
