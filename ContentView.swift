@@ -20,8 +20,14 @@ func sendActionToBackend(isListening: Bool) {
         if let response = response as? HTTPURLResponse {
             print("Status code: \(response.statusCode)")
         }
+        if let data = data {
+            if let jsonResponse = try? JSONSerialization.jsonObject(with: data, options: []) {
+                print("Response JSON: \(jsonResponse)")
+            }
+        }
     }.resume()
 }
+
 
 
 
